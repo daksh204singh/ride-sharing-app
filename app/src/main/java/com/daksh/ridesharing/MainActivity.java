@@ -51,21 +51,22 @@ public class MainActivity extends AppCompatActivity {
 
 		getSupportActionBar().hide();
 
-		if (ParseUser.getCurrentUser() == null) {
-			ParseAnonymousUtils.logIn((user, e) -> {
-				if (e == null) {
-					Log.i("Info", "Anonymous login successful");
-				} else {
-					Log.i("Info", "Anonymous login failed");
-				}
-			});
-		} else {
-			if (ParseUser.getCurrentUser().get("riderOrDriver") != null) {
-				Log.i("Info",
-						"Redirecting as " + ParseUser.getCurrentUser().get("riderOrDriver"));
-				redirectActivity();
-			}
-		}
+//		if (ParseUser.getCurrentUser() == null) {
+//			ParseAnonymousUtils.logIn((user, e) -> {
+//				if (e == null) {
+//					Log.i("Info", "Anonymous login successful");
+//				} else {
+//					Log.i("Info", "Anonymous login failed");
+//				}
+//			});
+//		} else {
+//			if (ParseUser.getCurrentUser().get("riderOrDriver") != null) {
+//				Log.i("Info",
+//						"Redirecting as " + ParseUser.getCurrentUser().get("riderOrDriver"));
+//				redirectActivity();
+//			}
+//		}
+		startActivity(new Intent(getApplicationContext(), LoginActivity.class));
 
 		ParseAnalytics.trackAppOpenedInBackground(getIntent());
 	}
