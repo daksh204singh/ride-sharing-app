@@ -2,6 +2,7 @@ package com.daksh.ridesharing;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -13,6 +14,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.parse.ParseAnalytics;
 import com.parse.ParseUser;
 
 import java.util.Objects;
@@ -38,6 +40,7 @@ public class LoginActivity extends AppCompatActivity {
 				user.signUpInBackground(ex -> {
 					if (Objects.isNull(ex)) {
 						Log.i("SignUp", "Successful");
+						startActivity(new Intent(getApplicationContext(), DashboardActivity.class));
 					} else {
 						Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
 					}
@@ -48,6 +51,7 @@ public class LoginActivity extends AppCompatActivity {
 						((user, e) -> {
 							if (Objects.nonNull(user)) {
 								Log.i("SignUp", "Login successful");
+								startActivity(new Intent(getApplicationContext(), DashboardActivity.class));
 							} else {
 								Toast.makeText(this, e.getMessage(),
 										Toast.LENGTH_SHORT).show();
@@ -72,6 +76,12 @@ public class LoginActivity extends AppCompatActivity {
 		passwordEditText.setOnKeyListener(this::onKeyPasswordEnter);
 		findViewById(R.id.backgroundRelativeLayout).setOnClickListener(this::hideKeyboard);
 		findViewById(R.id.logoImageView).setOnClickListener(this::hideKeyboard);
+
+		if (ParseUser.getCurrentUser() != null) {
+			startActivity(new Intent(getApplicationContext(), DashboardActivity.class));
+		}
+
+		ParseAnalytics.trackAppOpenedInBackground(getIntent());
 	}
 
 	/**
@@ -96,8 +106,11 @@ public class LoginActivity extends AppCompatActivity {
 	 * @param view view.
 	 */
 	private void hideKeyboard(View view) {
-		((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
-				.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+		final View focusedView = this.getCurrentFocus();
+		if (Objects.nonNull(focusedView)) {
+			((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
+					.hideSoftInputFromWindow(focusedView.getWindowToken(), 0);
+		}
 	}
 
 	private boolean onKeyPasswordEnter(final View view, final int code, final KeyEvent keyEvent) {
