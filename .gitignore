@@ -40,4 +40,4 @@ obj/
 **/*/res/values/secrets.xml
 **/*/res/values/google_maps_api.xml
 
-..bfg-report
+..bfg-report/
