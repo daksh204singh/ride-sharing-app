@@ -35,6 +35,7 @@ import com.parse.ParseQuery;
 import com.parse.ParseUser;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 
 public class RiderActivity extends FragmentActivity implements OnMapReadyCallback {
@@ -59,7 +60,7 @@ public class RiderActivity extends FragmentActivity implements OnMapReadyCallbac
 		// Obtain the SupportMapFragment and get notified when the map is ready to be used.
 		SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
 				.findFragmentById(R.id.map);
-		mapFragment.getMapAsync(this);
+		Objects.requireNonNull(mapFragment).getMapAsync(this);
 
 		requestButton = findViewById(R.id.requestPickup);
 		infoTextView = findViewById(R.id.infoTextView);
@@ -263,7 +264,7 @@ public class RiderActivity extends FragmentActivity implements OnMapReadyCallbac
 
 	public void logout(View view) {
 		ParseUser.logOut();
-		startActivity(new Intent(getApplicationContext(), MainActivity.class));
+		startActivity(new Intent(getApplicationContext(), LoginActivity.class));
 	}
 
 	private void updateMap(Location location) {
