@@ -244,11 +244,15 @@ public class RiderActivity extends FragmentActivity implements OnMapReadyCallbac
 					ParseGeoPoint parseGeoPoint = new ParseGeoPoint(
 							lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
 					request.put("location", parseGeoPoint);
+					request.put("user", ParseUser.getCurrentUser());
 					request.saveInBackground((e) -> {
 						if (e == null) {
 							requestButton.setText(R.string.cancelPickupRequest);
 							requestActive = true;
+							Log.i("request", "request saved");
 							checkForUpdates();
+						} else {
+							Log.i("request", "failed to save request" + e);
 						}
 					});
 				}

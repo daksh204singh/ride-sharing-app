@@ -13,9 +13,12 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.parse.ParseGeoPoint;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
@@ -119,9 +122,34 @@ public class ViewRequestsActivity extends AppCompatActivity {
 		}
 	}
 
+	/**
+	 * Dispatch onResume() to fragments.  Note that for better inter-operation
+	 * with older versions of the platform, at the point of this call the
+	 * fragments attached to the activity are <em>not</em> resumed.
+	 */
+	@Override
+	protected void onResume() {
+		super.onResume();
+		if (ContextCompat.checkSelfPermission(this,
+				android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+			ActivityCompat.requestPermissions(this,
+					new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+		} else {
+			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+					0, 0, locationListener);
+			Location lastKnownLocation =
+					locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+			if (lastKnownLocation != null) {
+				updateListView(lastKnownLocation);
+			}
+		}
+	}
+
 	private void updateListView(Location location) {
 		if (location != null) {
 			ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
+			query.include("user");
+			query.include("user.destination");
 			ParseGeoPoint geoPointLocation =
 					new ParseGeoPoint(location.getLatitude(), location.getLongitude());
 			query.whereNear("location", geoPointLocation);
@@ -135,15 +163,33 @@ public class ViewRequestsActivity extends AppCompatActivity {
 
 					objects.stream()
 							.filter(object -> Objects.nonNull(object.get("location")))
-							.map(object -> {
-								requestUsernames.add(object.getString("username"));
-								return object;
+							.filter(object -> {
+								final ParseUser userObj = object.getParseUser("user");
+								final ParseGeoPoint destinationObj = userObj.getParseGeoPoint("destination");
+								Log.i("requestDestination", destinationObj.toString());
+								final ParseGeoPoint currUserDestGeoPoint =
+										ParseUser.getCurrentUser().getParseGeoPoint("destination");
+								final LatLng currDestLatLng = new LatLng(
+										currUserDestGeoPoint.getLatitude(),
+										currUserDestGeoPoint.getLongitude());
+								final ParseGeoPoint requestUserDestGeoPoint =
+										userObj.getParseGeoPoint("destination");
+								final LatLng requestDestLatLng = new LatLng(
+										requestUserDestGeoPoint.getLatitude(),
+										requestUserDestGeoPoint.getLongitude());
+
+								final boolean filterRequestRes =
+										currDestLatLng.equals(requestDestLatLng);
+								Log.i("filterRequest",
+										String.valueOf(filterRequestRes));
+
+								return filterRequestRes;
 							})
+							.peek(object -> requestUsernames.add(object.getString("username")))
 							.map(object -> (ParseGeoPoint) object.get("location"))
-							.map((requestLocation) -> {
+							.peek((requestLocation) -> {
 								requestLatitudes.add(requestLocation.getLatitude());
 								requestLongitudes.add(requestLocation.getLongitude());
-								return requestLocation;
 							})
 							.mapToDouble(geoPointLocation::distanceInKilometersTo)
 							.map(distance -> Math.round(distance * 10)/10.0)
@@ -157,6 +203,11 @@ public class ViewRequestsActivity extends AppCompatActivity {
 
 
 		}
+	}
+
+	public void logout(View view) {
+		ParseUser.logOut();
+		startActivity(new Intent(getApplicationContext(), LoginActivity.class));
 	}
 
 
