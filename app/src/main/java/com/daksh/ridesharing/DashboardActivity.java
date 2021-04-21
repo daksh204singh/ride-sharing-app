@@ -79,7 +79,8 @@ public class DashboardActivity extends AppCompatActivity {
 		setContentView(R.layout.activity_main);
 		Objects.requireNonNull(getSupportActionBar()).hide();
 
-		Places.initialize(DashboardActivity.this, String.valueOf(R.string.google_places_api));
+		Places.initialize(DashboardActivity.this,
+				getResources().getString(R.string.google_places_api));
 		PlacesClient placesClient = Places.createClient(this);
 		AutocompleteSessionToken token = AutocompleteSessionToken.newInstance();
 
