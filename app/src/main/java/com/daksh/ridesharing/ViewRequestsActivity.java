@@ -12,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,6 +20,8 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.libraries.places.api.model.Place;
+import com.parse.Parse;
 import com.parse.ParseGeoPoint;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
@@ -82,7 +85,13 @@ public class ViewRequestsActivity extends AppCompatActivity {
 			updateListView(location);
 			ParseUser.getCurrentUser().put("location", new ParseGeoPoint(location.getLatitude(),
 					location.getLongitude()));
-			ParseUser.getCurrentUser().saveInBackground();
+			ParseUser.getCurrentUser().saveInBackground((e) -> {
+				if (e == null) {
+					Log.i("updateLocation", "Successful");
+				} else {
+					Log.i("updateLocation", "Failed", e);
+				}
+			});
 		};
 
 
@@ -149,7 +158,8 @@ public class ViewRequestsActivity extends AppCompatActivity {
 		if (location != null) {
 			ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
 			query.include("user");
-			query.include("user.destination");
+			query.include("user.destinationLat");
+			query.include("user.destinationLong");
 			ParseGeoPoint geoPointLocation =
 					new ParseGeoPoint(location.getLatitude(), location.getLongitude());
 			query.whereNear("location", geoPointLocation);
@@ -165,23 +175,20 @@ public class ViewRequestsActivity extends AppCompatActivity {
 							.filter(object -> Objects.nonNull(object.get("location")))
 							.filter(object -> {
 								final ParseUser userObj = object.getParseUser("user");
-								final ParseGeoPoint destinationObj = userObj.getParseGeoPoint("destination");
-								Log.i("requestDestination", destinationObj.toString());
-								final ParseGeoPoint currUserDestGeoPoint =
-										ParseUser.getCurrentUser().getParseGeoPoint("destination");
-								final LatLng currDestLatLng = new LatLng(
-										currUserDestGeoPoint.getLatitude(),
-										currUserDestGeoPoint.getLongitude());
-								final ParseGeoPoint requestUserDestGeoPoint =
-										userObj.getParseGeoPoint("destination");
-								final LatLng requestDestLatLng = new LatLng(
-										requestUserDestGeoPoint.getLatitude(),
-										requestUserDestGeoPoint.getLongitude());
+
+								final double userDestinationLat = userObj.getDouble("destinationLat");
+								final double userDestinationLong = userObj.getDouble("destinationLong");
+								final LatLng requestDestLatLng = new LatLng(userDestinationLat, userDestinationLong);
+
+								final double currentUserDestLat =
+										ParseUser.getCurrentUser().getDouble("destinationLat");
+								final double currentUserDestLong =
+										ParseUser.getCurrentUser().getDouble("destinationLong");
+								final LatLng currDestLatLng = new LatLng(currentUserDestLat, currentUserDestLong);
 
 								final boolean filterRequestRes =
 										currDestLatLng.equals(requestDestLatLng);
-								Log.i("filterRequest",
-										String.valueOf(filterRequestRes));
+								Log.d("filterRequest", String.valueOf(filterRequestRes));
 
 								return filterRequestRes;
 							})
@@ -206,7 +213,28 @@ public class ViewRequestsActivity extends AppCompatActivity {
 
 	public void logout(View view) {
 		ParseUser.logOut();
+		final Intent intent = new Intent(getApplicationContext(), LoginActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 		startActivity(new Intent(getApplicationContext(), LoginActivity.class));
+		finish();
+	}
+
+	public void navigate(View view) {
+		ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
+		query.include("user");
+
+		final StringBuilder builder = new StringBuilder("http://maps.google.com/maps?saddr=");
+//		ParseGeoPoint tmp = ParseUser.getCurrentUser().getParseGeoPoint()
+//		builder.append(ParseUser.getCurrentUser().get);
+//		Intent directionsIntent = new Intent(android.content.Intent.ACTION_VIEW,
+//				Uri.parse("http://maps.google.com/maps?saddr="
+//						+ intent.getDoubleExtra("driverLatitude", 0)
+//						+ "," + intent.getDoubleExtra("driverLongitude", 0)
+//						+ "&daddr="
+//						+ intent.getDoubleExtra("requestLatitude", 0)
+//						+ ","
+//						+ intent.getDoubleExtra("requestLongitude", 0)));
+//		startActivity(directionsIntent);
 	}
 
 

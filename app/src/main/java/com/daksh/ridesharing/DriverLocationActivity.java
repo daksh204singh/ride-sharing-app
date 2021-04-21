@@ -82,15 +82,16 @@ public class DriverLocationActivity extends FragmentActivity implements OnMapRea
 					object.put("driverUsername", ParseUser.getCurrentUser().getUsername());
 					object.saveInBackground((exception) -> {
 						if (exception == null) {
-							Intent directionsIntent = new Intent(android.content.Intent.ACTION_VIEW,
-									Uri.parse("http://maps.google.com/maps?saddr="
-											+ intent.getDoubleExtra("driverLatitude", 0)
-											+ "," + intent.getDoubleExtra("driverLongitude", 0)
-											+ "&daddr="
-											+ intent.getDoubleExtra("requestLatitude", 0)
-											+ ","
-											+ intent.getDoubleExtra("requestLongitude", 0)));
-							startActivity(directionsIntent);
+//							Intent directionsIntent = new Intent(android.content.Intent.ACTION_VIEW,
+//									Uri.parse("http://maps.google.com/maps?saddr="
+//											+ intent.getDoubleExtra("driverLatitude", 0)
+//											+ "," + intent.getDoubleExtra("driverLongitude", 0)
+//											+ "&daddr="
+//											+ intent.getDoubleExtra("requestLatitude", 0)
+//											+ ","
+//											+ intent.getDoubleExtra("requestLongitude", 0)));
+//							startActivity(directionsIntent);
+							finish();
 						}
 					});
 				});

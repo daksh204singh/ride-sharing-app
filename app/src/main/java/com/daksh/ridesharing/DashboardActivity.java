@@ -61,8 +61,8 @@ public class DashboardActivity extends AppCompatActivity {
 		ParseUser.getCurrentUser().put("riderOrDriver", userType);
 
 		final LatLng latLng = placeSelected.getLatLng();
-		final ParseGeoPoint parseGeoPoint = new ParseGeoPoint(latLng.latitude, latLng.longitude);
-		ParseUser.getCurrentUser().put("destination", parseGeoPoint);
+		ParseUser.getCurrentUser().put("destinationLat", latLng.latitude);
+		ParseUser.getCurrentUser().put("destinationLong", latLng.longitude);
 
 		ParseUser.getCurrentUser().saveInBackground((e) -> {
 			if (e == null) {
@@ -109,4 +109,13 @@ public class DashboardActivity extends AppCompatActivity {
 			}
 		});
 	}
+
+	public void logout(View view) {
+		ParseUser.logOut();
+		final Intent intent = new Intent(getApplicationContext(), LoginActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		startActivity(new Intent(getApplicationContext(), LoginActivity.class));
+		finish();
+	}
+
 }
