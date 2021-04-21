@@ -201,7 +201,6 @@ public class ViewRequestsActivity extends AppCompatActivity {
 				arrayAdapter.notifyDataSetChanged();
 			}));
 
-
 		}
 	}
 
