@@ -12,16 +12,24 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.libraries.places.api.model.Place;
+import com.parse.Parse;
 import com.parse.ParseGeoPoint;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
 import com.parse.ParseUser;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Objects;
 
 public class ViewRequestsActivity extends AppCompatActivity {
@@ -79,7 +87,13 @@ public class ViewRequestsActivity extends AppCompatActivity {
 			updateListView(location);
 			ParseUser.getCurrentUser().put("location", new ParseGeoPoint(location.getLatitude(),
 					location.getLongitude()));
-			ParseUser.getCurrentUser().saveInBackground();
+			ParseUser.getCurrentUser().saveInBackground((e) -> {
+				if (e == null) {
+					Log.i("updateLocation", "Successful");
+				} else {
+					Log.i("updateLocation", "Failed", e);
+				}
+			});
 		};
 
 
@@ -119,9 +133,35 @@ public class ViewRequestsActivity extends AppCompatActivity {
 		}
 	}
 
+	/**
+	 * Dispatch onResume() to fragments.  Note that for better inter-operation
+	 * with older versions of the platform, at the point of this call the
+	 * fragments attached to the activity are <em>not</em> resumed.
+	 */
+	@Override
+	protected void onResume() {
+		super.onResume();
+		if (ContextCompat.checkSelfPermission(this,
+				android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+			ActivityCompat.requestPermissions(this,
+					new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+		} else {
+			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+					0, 0, locationListener);
+			Location lastKnownLocation =
+					locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+			if (lastKnownLocation != null) {
+				updateListView(lastKnownLocation);
+			}
+		}
+	}
+
 	private void updateListView(Location location) {
 		if (location != null) {
 			ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
+			query.include("user");
+			query.include("user.destinationLat");
+			query.include("user.destinationLong");
 			ParseGeoPoint geoPointLocation =
 					new ParseGeoPoint(location.getLatitude(), location.getLongitude());
 			query.whereNear("location", geoPointLocation);
@@ -135,15 +175,30 @@ public class ViewRequestsActivity extends AppCompatActivity {
 
 					objects.stream()
 							.filter(object -> Objects.nonNull(object.get("location")))
-							.map(object -> {
-								requestUsernames.add(object.getString("username"));
-								return object;
+							.filter(object -> {
+								final ParseUser userObj = object.getParseUser("user");
+
+								final double userDestinationLat = userObj.getDouble("destinationLat");
+								final double userDestinationLong = userObj.getDouble("destinationLong");
+								final LatLng requestDestLatLng = new LatLng(userDestinationLat, userDestinationLong);
+
+								final double currentUserDestLat =
+										ParseUser.getCurrentUser().getDouble("destinationLat");
+								final double currentUserDestLong =
+										ParseUser.getCurrentUser().getDouble("destinationLong");
+								final LatLng currDestLatLng = new LatLng(currentUserDestLat, currentUserDestLong);
+
+								final boolean filterRequestRes =
+										currDestLatLng.equals(requestDestLatLng);
+								Log.d("filterRequest", String.valueOf(filterRequestRes));
+
+								return filterRequestRes;
 							})
+							.peek(object -> requestUsernames.add(object.getString("username")))
 							.map(object -> (ParseGeoPoint) object.get("location"))
-							.map((requestLocation) -> {
+							.peek((requestLocation) -> {
 								requestLatitudes.add(requestLocation.getLatitude());
 								requestLongitudes.add(requestLocation.getLongitude());
-								return requestLocation;
 							})
 							.mapToDouble(geoPointLocation::distanceInKilometersTo)
 							.map(distance -> Math.round(distance * 10)/10.0)
@@ -155,9 +210,57 @@ public class ViewRequestsActivity extends AppCompatActivity {
 				arrayAdapter.notifyDataSetChanged();
 			}));
 
-
 		}
 	}
 
+	public void logout(View view) {
+		ParseUser.logOut();
+		final Intent intent = new Intent(getApplicationContext(), LoginActivity.class);
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		startActivity(new Intent(getApplicationContext(), LoginActivity.class));
+		finish();
+	}
+
+	public void navigate(View view) {
+		Log.i("Navigation", "Started");
+		ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
+		query.whereEqualTo("driverUsername", ParseUser.getCurrentUser().getUsername());
+
+		query.findInBackground((objects, ex) -> {
+			if (ex != null) {
+				Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
+			} else if (objects.isEmpty()) {
+				Toast.makeText(this, "Please accept requests or wait for requests to come",
+						Toast.LENGTH_SHORT).show();
+			} else {
+
+				final ParseGeoPoint parseGeoPoint = ParseUser.getCurrentUser().getParseGeoPoint("location");
+				final LatLng latLng;
+				if (parseGeoPoint != null) {
+					latLng = new LatLng(parseGeoPoint.getLatitude(), parseGeoPoint.getLongitude());
+				} else {
+					latLng = new LatLng(0, 0);
+				}
+
+				final StringBuffer buffer =
+						new StringBuffer("https://www.google.com/maps/dir/")
+								.append(latLng.latitude).append(',').append(latLng.longitude);
+				objects.stream()
+						.filter(object -> Objects.nonNull(object.getParseGeoPoint("location")))
+						.map(object -> object.getParseGeoPoint("location"))
+						.forEach(point -> buffer.append("/").append(point.getLatitude())
+								.append(',').append(point.getLongitude()));
+				final double destLat = ParseUser.getCurrentUser().getDouble("destinationLat");
+				final double destLong = ParseUser.getCurrentUser().getDouble("destinationLong");
+				buffer.append("/").append(destLat).append(',').append(destLong);
+				Log.i("Payload", buffer.toString());
+				Intent directionsIntent = new Intent(android.content.Intent.ACTION_VIEW,
+						Uri.parse(buffer.toString()));
+				startActivity(directionsIntent);
+
+				Log.i("Navigation", "Launched");
+			}
+		});
+	}
 
 }
