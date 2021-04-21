@@ -78,92 +78,94 @@ public class RiderActivity extends FragmentActivity implements OnMapReadyCallbac
 
 	private void checkForUpdates() {
 		Log.i("Driver Active", String.valueOf(driverActive));
-		ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
-		query.whereEqualTo("username", ParseUser.getCurrentUser().getUsername());
-		query.whereExists("driverUsername");
+		if (Objects.nonNull(ParseUser.getCurrentUser())) {
+			ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
+			query.whereEqualTo("username", ParseUser.getCurrentUser().getUsername());
+			query.whereExists("driverUsername");
 
-		query.findInBackground(((objects, e) -> {
-			if (e == null && objects.size() > 0) {
-				driverActive = true;
-				ParseQuery<ParseUser> parseUserQuery = ParseUser.getQuery();
-				parseUserQuery.whereEqualTo("username",
-						objects.get(0).getString("driverUsername"));
+			query.findInBackground(((objects, e) -> {
+				if (e == null && objects.size() > 0) {
+					driverActive = true;
+					ParseQuery<ParseUser> parseUserQuery = ParseUser.getQuery();
+					parseUserQuery.whereEqualTo("username",
+							objects.get(0).getString("driverUsername"));
 
-				parseUserQuery.findInBackground((driverObjects, exception) -> {
-					if (e == null && driverObjects.size() > 0) {
-						ParseGeoPoint driverLocation =
-								driverObjects.get(0).getParseGeoPoint("location");
+					parseUserQuery.findInBackground((driverObjects, exception) -> {
+						if (e == null && driverObjects.size() > 0) {
+							ParseGeoPoint driverLocation =
+									driverObjects.get(0).getParseGeoPoint("location");
 
-						if (ContextCompat.checkSelfPermission(this,
-								Manifest.permission.ACCESS_FINE_LOCATION)
-								== PackageManager.PERMISSION_GRANTED) {
-							Location lastKnownLocation =
-									locationManager
-											.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-							if (lastKnownLocation != null) {
-								ParseGeoPoint userLocation = new ParseGeoPoint(
-										lastKnownLocation.getLatitude(),
-										lastKnownLocation.getLongitude());
-								double distanceInKms =
-										driverLocation.distanceInKilometersTo(userLocation);
+							if (ContextCompat.checkSelfPermission(this,
+									Manifest.permission.ACCESS_FINE_LOCATION)
+									== PackageManager.PERMISSION_GRANTED) {
+								Location lastKnownLocation =
+										locationManager
+												.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+								if (lastKnownLocation != null) {
+									ParseGeoPoint userLocation = new ParseGeoPoint(
+											lastKnownLocation.getLatitude(),
+											lastKnownLocation.getLongitude());
+									double distanceInKms =
+											driverLocation.distanceInKilometersTo(userLocation);
 
-								if (distanceInKms < 0.01) {
-									infoTextView.setText("Your driver is here!");
+									if (distanceInKms < 0.01) {
+										infoTextView.setText("Your driver is here!");
 
-									ParseQuery<ParseObject> query1 = ParseQuery.getQuery("Request");
-									query1.whereEqualTo("username",
-											ParseUser.getCurrentUser().getUsername());
+										ParseQuery<ParseObject> query1 = ParseQuery.getQuery("Request");
+										query1.whereEqualTo("username",
+												ParseUser.getCurrentUser().getUsername());
 
-									query1.findInBackground((requestObjects, exception1) -> {
-										if (exception1 == null) {
-											requestObjects.stream()
-													.forEach(ParseObject::deleteInBackground);
-										}
-									});
-									handler.postDelayed(() -> {
-										requestButton.setVisibility(View.VISIBLE);
-										requestButton.setText("Request Pickup");
-										requestActive = false;
-										driverActive = false;
-									}, 5000);
-								} else {
+										query1.findInBackground((requestObjects, exception1) -> {
+											if (exception1 == null) {
+												requestObjects.stream()
+														.forEach(ParseObject::deleteInBackground);
+											}
+										});
+										handler.postDelayed(() -> {
+											requestButton.setVisibility(View.VISIBLE);
+											requestButton.setText("Request Pickup");
+											requestActive = false;
+											driverActive = false;
+										}, 5000);
+									} else {
 
-									double distanceOneDP = (double) Math.round(distanceInKms * 10) / 10;
-									infoTextView.setText("Your Driver is: "
-											+ distanceOneDP + " miles away");
-
-
-									ArrayList<Marker> markers = new ArrayList<>();
-									mMap.clear();
-
-									LatLng driverLatLng = new LatLng(driverLocation.getLatitude(),
-											driverLocation.getLongitude());
-									LatLng userLatLng = new LatLng(userLocation.getLatitude(),
-											userLocation.getLongitude());
-
-									markers.add(mMap.addMarker(new MarkerOptions().position(userLatLng).title("Your Location")));
-									markers.add(mMap.addMarker(new MarkerOptions()
-											.position(driverLatLng).title("Driver Location")
-											.icon(BitmapDescriptorFactory
-													.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))));
-
-									LatLngBounds.Builder builder = new LatLngBounds.Builder();
-									markers.stream().forEach((marker -> builder.include(marker.getPosition())));
-									LatLngBounds bounds = builder.build();
-									mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 20));
+										double distanceOneDP = (double) Math.round(distanceInKms * 10) / 10;
+										infoTextView.setText("Your Driver is: "
+												+ distanceOneDP + " miles away");
 
 
-									requestButton.setVisibility(View.INVISIBLE);
-									handler.postDelayed(this::checkForUpdates, 2000);
+										ArrayList<Marker> markers = new ArrayList<>();
+										mMap.clear();
+
+										LatLng driverLatLng = new LatLng(driverLocation.getLatitude(),
+												driverLocation.getLongitude());
+										LatLng userLatLng = new LatLng(userLocation.getLatitude(),
+												userLocation.getLongitude());
+
+										markers.add(mMap.addMarker(new MarkerOptions().position(userLatLng).title("Your Location")));
+										markers.add(mMap.addMarker(new MarkerOptions()
+												.position(driverLatLng).title("Driver Location")
+												.icon(BitmapDescriptorFactory
+														.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))));
+
+										LatLngBounds.Builder builder = new LatLngBounds.Builder();
+										markers.stream().forEach((marker -> builder.include(marker.getPosition())));
+										LatLngBounds bounds = builder.build();
+										mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 20));
+
+
+										requestButton.setVisibility(View.INVISIBLE);
+										handler.postDelayed(this::checkForUpdates, 2000);
+									}
 								}
 							}
 						}
-					}
-				});
-			} else {
-				checkForUpdates();
-			}
-		}));
+					});
+				} else {
+					checkForUpdates();
+				}
+			}));
+		}
 	}
 
 	/**
