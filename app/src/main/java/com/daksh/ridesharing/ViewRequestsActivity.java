@@ -18,6 +18,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.libraries.places.api.model.Place;
@@ -28,6 +29,7 @@ import com.parse.ParseQuery;
 import com.parse.ParseUser;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Objects;
 
 public class ViewRequestsActivity extends AppCompatActivity {
@@ -220,22 +222,45 @@ public class ViewRequestsActivity extends AppCompatActivity {
 	}
 
 	public void navigate(View view) {
+		Log.i("Navigation", "Started");
 		ParseQuery<ParseObject> query = ParseQuery.getQuery("Request");
-		query.include("user");
+		query.whereEqualTo("driverUsername", ParseUser.getCurrentUser().getUsername());
 
-		final StringBuilder builder = new StringBuilder("http://maps.google.com/maps?saddr=");
-//		ParseGeoPoint tmp = ParseUser.getCurrentUser().getParseGeoPoint()
-//		builder.append(ParseUser.getCurrentUser().get);
-//		Intent directionsIntent = new Intent(android.content.Intent.ACTION_VIEW,
-//				Uri.parse("http://maps.google.com/maps?saddr="
-//						+ intent.getDoubleExtra("driverLatitude", 0)
-//						+ "," + intent.getDoubleExtra("driverLongitude", 0)
-//						+ "&daddr="
-//						+ intent.getDoubleExtra("requestLatitude", 0)
-//						+ ","
-//						+ intent.getDoubleExtra("requestLongitude", 0)));
-//		startActivity(directionsIntent);
+		query.findInBackground((objects, ex) -> {
+			if (ex != null) {
+				Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
+			} else if (objects.isEmpty()) {
+				Toast.makeText(this, "Please accept requests or wait for requests to come",
+						Toast.LENGTH_SHORT).show();
+			} else {
+
+				final ParseGeoPoint parseGeoPoint = ParseUser.getCurrentUser().getParseGeoPoint("location");
+				final LatLng latLng;
+				if (parseGeoPoint != null) {
+					latLng = new LatLng(parseGeoPoint.getLatitude(), parseGeoPoint.getLongitude());
+				} else {
+					latLng = new LatLng(0, 0);
+				}
+
+				final StringBuffer buffer =
+						new StringBuffer("https://www.google.com/maps/dir/")
+								.append(latLng.latitude).append(',').append(latLng.longitude);
+				objects.stream()
+						.filter(object -> Objects.nonNull(object.getParseGeoPoint("location")))
+						.map(object -> object.getParseGeoPoint("location"))
+						.forEach(point -> buffer.append("/").append(point.getLatitude())
+								.append(',').append(point.getLongitude()));
+				final double destLat = ParseUser.getCurrentUser().getDouble("destinationLat");
+				final double destLong = ParseUser.getCurrentUser().getDouble("destinationLong");
+				buffer.append("/").append(destLat).append(',').append(destLong);
+				Log.i("Payload", buffer.toString());
+				Intent directionsIntent = new Intent(android.content.Intent.ACTION_VIEW,
+						Uri.parse(buffer.toString()));
+				startActivity(directionsIntent);
+
+				Log.i("Navigation", "Launched");
+			}
+		});
 	}
-
 
 }

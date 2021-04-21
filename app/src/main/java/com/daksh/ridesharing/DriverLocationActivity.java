@@ -5,7 +5,9 @@ import androidx.fragment.app.FragmentActivity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -82,16 +84,12 @@ public class DriverLocationActivity extends FragmentActivity implements OnMapRea
 					object.put("driverUsername", ParseUser.getCurrentUser().getUsername());
 					object.saveInBackground((exception) -> {
 						if (exception == null) {
-//							Intent directionsIntent = new Intent(android.content.Intent.ACTION_VIEW,
-//									Uri.parse("http://maps.google.com/maps?saddr="
-//											+ intent.getDoubleExtra("driverLatitude", 0)
-//											+ "," + intent.getDoubleExtra("driverLongitude", 0)
-//											+ "&daddr="
-//											+ intent.getDoubleExtra("requestLatitude", 0)
-//											+ ","
-//											+ intent.getDoubleExtra("requestLongitude", 0)));
-//							startActivity(directionsIntent);
+							Log.i("AcceptRequest", "request accepted");
 							finish();
+						} else {
+							Log.i("AcceptRequest", "request was not accepted", exception);
+							Toast.makeText(this, "Unable to accept request: "
+									+ exception.getMessage(), Toast.LENGTH_SHORT).show();
 						}
 					});
 				});
